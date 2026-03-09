@@ -17,9 +17,8 @@ from typing import Any
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 
-from app.models import ActiveCrisis, TrustedNode, TaskAssignment
+from app.models import ActiveCrisis, TrustedNode, TaskAssignment, AssignmentStatus
 from app.services import twilio_client
 
 logger = logging.getLogger(__name__)
@@ -79,8 +78,8 @@ async def dispatch_tasks(db: AsyncSession, crisis: ActiveCrisis, plan: dict[str,
             id=uuid.uuid4(),
             crisis_id=crisis.id,
             node_id=assigned_node.id,
-            task_description=f"[{task.get('priority', 'MEDIUM')}] {task.get('action', 'Unknown Task')}",
-            status="PENDING"
+            task_text_en=f"[{task.get('priority', 'MEDIUM')}] {task.get('action', 'Unknown Task')}",
+            status=AssignmentStatus.DISPATCHED
         )
         db.add(assignment)
         await db.flush()

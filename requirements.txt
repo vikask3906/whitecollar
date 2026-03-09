@@ -30,4 +30,5 @@ azure-ai-contentsafety==1.0.0        # Azure AI Content Safety
 # ─── Azure SDKs (Step 3+) ─────────────────────────────────────────────────────
 openai==1.30.1                       # Azure OpenAI (Planner Agent)
 pyautogen==0.2.35                    # Microsoft AutoGen multi-agent framework
-# azure-search-documents==11.4.0    # Azure AI Search (future RAG upgrade)
+azure-search-documents==11.4.0      # Azure AI Search (Retriever Agent RAG)
+
