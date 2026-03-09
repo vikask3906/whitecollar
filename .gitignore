@@ -1,0 +1,28 @@
+# Secrets — NEVER commit these
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Alembic
+alembic/versions/*.py   # optional: commit if you want migration history
+
+# IDE
+.vscode/
+.idea/
+
+# Node (for future React frontend)
+node_modules/
+.next/
+
+# OS
+.DS_Store
+Thumbs.db

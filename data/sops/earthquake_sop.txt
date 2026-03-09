@@ -1,0 +1,52 @@
+NATIONAL DISASTER MANAGEMENT AUTHORITY (NDMA)
+STANDARD OPERATING PROCEDURE — EARTHQUAKE EMERGENCY
+=====================================================
+
+1. IMMEDIATE ACTIONS (0-15 minutes)
+────────────────────────────────────
+1.1. NDMA activates National EOC upon NCS/USGS alert (M ≥ 5.0).
+1.2. Issue nationwide "Drop, Cover, Hold On" advisory.
+1.3. All first responders report to nearest staging area.
+1.4. Search and rescue teams deploy within 30 minutes of event.
+1.5. Hospitals activate Mass Casualty Protocol (triage at entrance).
+1.6. Gas pipelines and high-voltage power shut off in affected area.
+1.7. Aftershock monitoring — warn public of secondary collapse risk.
+
+2. SEARCH & RESCUE PRIORITIES
+──────────────────────────────
+2.1. Priority 1: Collapsed multi-story residential buildings.
+2.2. Priority 2: Schools, hospitals, crowded commercial buildings.
+2.3. Priority 3: Infrastructure — bridges, flyovers, dams.
+2.4. Use heavy equipment ONLY after light rescue phase (0-72h).
+2.5. Mark searched buildings with INSARAG marking system.
+
+3. RESOURCE DEPLOYMENT
+──────────────────────
+3.1. 1 NDRF battalion per district in affected zone.
+3.2. Urban SAR teams with dogs, cameras, and listening devices.
+3.3. Field hospitals: 1 per 10,000 population in impact zone.
+3.4. Army engineering units for road clearance.
+3.5. IAF airlift for areas with road access disrupted.
+
+4. COMMUNICATION PROTOCOL
+──────────────────────────
+4.1. All communication on NDRF Emergency Channel.
+4.2. Satellite phones deployed to forward operating bases.
+4.3. Citizen helpline: 1078 (NDMA Disaster Helpline).
+4.4. Social media monitoring cell activated for SOS signals.
+4.5. Status updates to PMO every 60 minutes.
+
+5. SHELTER & RELIEF
+────────────────────
+5.1. Tent camps set up in open grounds — avoid buildings with cracks.
+5.2. Distribution: 10 kg food grain, 10L water per family per day.
+5.3. Blankets, medical kits, sanitation material within first 12 hours.
+5.4. Psychological first aid teams deployed to all relief camps.
+
+6. POST-EARTHQUAKE
+───────────────────
+6.1. Rapid Visual Screening of all structures in impact zone.
+6.2. Red-tag (unsafe), Yellow-tag (restricted), Green-tag (safe).
+6.3. Demolition of Red-tagged structures within 30 days.
+6.4. Reconstruction guidelines per IS 1893 (seismic code).
+6.5. Lessons learned report to NDMA within 90 days.

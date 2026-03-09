@@ -1,0 +1,41 @@
+NATIONAL DISASTER MANAGEMENT AUTHORITY (NDMA)
+STANDARD OPERATING PROCEDURE — FIRE EMERGENCY
+================================================
+
+1. IMMEDIATE ACTIONS (0-30 minutes)
+────────────────────────────────────
+1.1. Alert nearest fire station — call 101 or NDRF control room.
+1.2. Establish a 200-metre outer perimeter; evacuate all persons within.
+1.3. Identify wind direction; position responders upwind of the fire.
+1.4. Assign a staging area for ambulances — minimum 500m from the blaze.
+1.5. Deploy fire extinguishers (ABC type) for small fires; request fire tender for larger fires.
+1.6. Cut off gas and electricity supply to the affected building/area.
+1.7. Do NOT use elevators; direct all evacuation via stairwells.
+
+2. EVACUATION PRIORITIES
+────────────────────────
+2.1. Priority 1: Hospitals, schools, elderly care facilities within 500m.
+2.2. Priority 2: Dense residential areas within 200m.
+2.3. Priority 3: Commercial establishments within 100m.
+2.4. Designated rally points: open grounds, parks, wide roads.
+
+3. RESOURCE DEPLOYMENT
+──────────────────────
+3.1. Minimum 2 fire tenders per 1000 sqm of fire area.
+3.2. 1 ambulance per 50 evacuated persons.
+3.3. NDRF team if fire spreads beyond 2000 sqm.
+3.4. Request IAF helicopter for high-rise fires above 10 floors.
+
+4. COMMUNICATION PROTOCOL
+──────────────────────────
+4.1. Incident Commander broadcasts on NDRF Channel 5.
+4.2. Updates to state EOC every 15 minutes.
+4.3. Public advisory via SMS blast to all phones within 2 km.
+4.4. Media briefing within 60 minutes of incident.
+
+5. POST-INCIDENT
+─────────────────
+5.1. Fire department declares "fire under control" status.
+5.2. Structural engineer must inspect before re-entry.
+5.3. Relief camp setup if displacement exceeds 50 families.
+5.4. File incident report to NDMA within 24 hours.

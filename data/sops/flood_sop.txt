@@ -1,0 +1,46 @@
+NATIONAL DISASTER MANAGEMENT AUTHORITY (NDMA)
+STANDARD OPERATING PROCEDURE — FLOOD EMERGENCY
+=================================================
+
+1. PRE-EVENT (Warning Lead Time > 24h)
+────────────────────────────────────────
+1.1. Activate District EOC upon IMD/CWC flood advisory.
+1.2. Alert all gram panchayats in identified flood-prone zones.
+1.3. Pre-position relief material: food, water, tarpaulins at district warehouses.
+1.4. Pre-deploy boats and rescue teams to high-risk embankments.
+1.5. Identify evacuation routes AWAY from rivers; mark on map.
+1.6. Open relief shelters: schools, community halls on higher ground.
+1.7. Issue public advisory in local language via radio, SMS, loudspeakers.
+
+2. DURING FLOOD EVENT
+──────────────────────
+2.1. Continuously monitor water levels via CWC gauge stations.
+2.2. If water level crosses Danger Level → mandatory evacuation.
+2.3. Deploy NDRF/SDRF boats for stranded persons.
+2.4. Prioritize rescue: pregnant women, elderly, children, disabled.
+2.5. Set up medical camps at each relief shelter.
+2.6. Drinking water: deploy RO tankers; distribute chlorine tablets.
+2.7. Animal rescue: coordinate with local animal husbandry department.
+
+3. RESOURCE DEPLOYMENT
+──────────────────────
+3.1. 1 NDRF team per 5 km of flooded river bank.
+3.2. Minimum 10 boats (inflatable + motorized) per district.
+3.3. 2 relief camps per block with capacity for 500 families each.
+3.4. Army columns on standby if flood area exceeds 100 sq km.
+
+4. COMMUNICATION PROTOCOL
+──────────────────────────
+4.1. EOC to State HQ: updates every 30 minutes during active flooding.
+4.2. CWC bulletins relayed to all responders via WhatsApp group.
+4.3. Toll-free helpline activated for citizen distress calls.
+4.4. Drone survey every 6 hours for situational awareness.
+
+5. POST-FLOOD
+──────────────
+5.1. Dewatering pumps deployed within 24 hours of water recession.
+5.2. Damage assessment teams deployed within 48 hours.
+5.3. Temporary housing for displaced families losing permanent shelter.
+5.4. Epidemic prevention: fogging, water testing, medical screening.
+5.5. Infrastructure repair prioritization: roads > bridges > power lines.
+5.6. File detailed flood report to NDMA within 72 hours.
