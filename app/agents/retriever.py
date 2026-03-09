@@ -136,7 +136,12 @@ async def _search_azure_ai(
             top=5,
             # query_type="semantic", # Ensure semantic search is enabled on your Azure Search resource if using this
         )
-        texts = [r["content"] for r in results if r.get("content")]
+        texts = []
+        for r in results:
+            # Try common Azure AI Search field names
+            text = r.get("content") or r.get("merged_content") or r.get("text") or ""
+            if text:
+                texts.append(text)
         if texts:
             logger.info(f"Azure AI Search returned {len(texts)} chunks from index '{settings.azure_search_index}'")
             return "\n\n".join(texts)
