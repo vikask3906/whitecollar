@@ -6,7 +6,9 @@ FastAPI application entry point.
 - Configures CORS (permissive for local dev)
 - Provides /health endpoint
 - Configures structured logging
+- Runs background pollers for USGS earthquakes + IMD/weather warnings
 """
+import asyncio
 import logging
 import sys
 
@@ -14,6 +16,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.database import AsyncSessionLocal
 from app.routers import crises, ingest, nodes, orchestration
 from app.services.notifier import notifier
 
@@ -35,7 +38,7 @@ app = FastAPI(
         "Manages the Trusted Node verification pipeline, Active Crises, "
         "and bridges the AutoGen multi-agent orchestration layer."
     ),
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -59,20 +62,52 @@ app.include_router(orchestration.router)
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["System"], summary="Health Check")
 async def health():
-    return {"status": "ok", "version": "0.1.0", "env": settings.app_env}
+    return {"status": "ok", "version": "0.2.0", "env": settings.app_env}
+
+
+# ── Background pollers ────────────────────────────────────────────────────────
+POLL_INTERVAL_SECONDS = 300  # 5 minutes
+
+async def _disaster_feed_poller():
+    """Background loop that polls USGS + IMD/weather feeds every 5 minutes."""
+    from app.services.earthquake_watcher import poll_usgs_earthquakes
+    from app.services.weather_watcher import poll_imd_warnings
+
+    # Wait 10 seconds after startup before first poll
+    await asyncio.sleep(10)
+    logger.info("🛰️ Background disaster feed poller started (every 5 min)")
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await poll_usgs_earthquakes(db)
+                await poll_imd_warnings(db)
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Disaster feed poller error: {e}")
+
+        await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
 # ── Startup / shutdown events ─────────────────────────────────────────────────
+_poller_task = None
+
 @app.on_event("startup")
 async def on_startup():
+    global _poller_task
     logger.info("ADRC API starting up...")
     logger.info(
         f"Environment: {settings.app_env} | Log level: {settings.log_level}"
     )
+    # Start background disaster feed poller
+    _poller_task = asyncio.create_task(_disaster_feed_poller())
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
+    global _poller_task
+    if _poller_task:
+        _poller_task.cancel()
     logger.info("ADRC API shutting down.")
 
 
@@ -91,3 +126,4 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
     except WebSocketDisconnect:
         notifier.disconnect(websocket)
+
