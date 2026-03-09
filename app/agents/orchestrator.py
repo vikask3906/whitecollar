@@ -26,8 +26,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents import retriever, planner
+from app.agents import retriever, planner, executor
 from app.models import ActiveCrisis, CrisisStatus
+from app.services.notifier import notifier
 
 logger = logging.getLogger(__name__)
 
@@ -125,13 +126,18 @@ async def run_orchestration(
         f"POST /crises/{crisis_id}/approve"
     )
 
-    return {
+    result_payload = {
         "status": "paused_for_review",
         "phase": "HITL_REVIEW",
         "crisis_id": str(crisis_id),
         "tasks_generated": task_count,
         "plan": plan,
     }
+
+    # ── Broadcast Phase 3 to Dashboard ───────────────────────────────────────
+    await notifier.broadcast("ORCHESTRATION_UPDATED", result_payload)
+
+    return result_payload
 
 
 async def approve_plan(
@@ -206,16 +212,21 @@ async def approve_plan(
         f"Phase → EXECUTION ({task_count} tasks ready for dispatch)"
     )
 
-    # TODO (Step 5): Trigger Executor agent to dispatch tasks to L2/L3 nodes
-    # await executor.dispatch_tasks(db, crisis, plan)
+    # ── Trigger Executor agent to dispatch tasks to L2/L3 nodes ──────────────
+    await executor.dispatch_tasks(db, crisis, plan)
 
-    return {
+    result_payload = {
         "status": "approved",
         "phase": "EXECUTION",
         "crisis_id": str(crisis_id),
         "tasks_count": task_count,
         "plan": plan,
     }
+
+    # ── Broadcast Phase 4 (Approved) to Dashboard ────────────────────────────
+    await notifier.broadcast("ORCHESTRATION_UPDATED", result_payload)
+
+    return result_payload
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -231,3 +242,11 @@ async def _update_phase(
     crisis.orchestration_state = current_state
     crisis.updated_at = datetime.now(timezone.utc)
     await db.flush()
+
+    # ── Broadcast intermediate phases (RETRIEVAL, PLANNING) ──────────────────
+    if phase in ["RETRIEVAL", "PLANNING"]:
+        await notifier.broadcast("ORCHESTRATION_UPDATED", {
+            "crisis_id": str(crisis.id),
+            "phase": phase,
+            "status": "in_progress"
+        })

@@ -227,3 +227,39 @@ async def promote_cluster_to_crisis(
         f"| confirmed by {confirming_node.name}"
     )
     return crisis
+
+
+# ── Step 5: Executor Task Dispatch ────────────────────────────────────────────
+
+async def dispatch_task_sms(
+    db: AsyncSession,
+    node: TrustedNode,
+    task: dict,
+    crisis: ActiveCrisis,
+    assignment_id: uuid.UUID
+):
+    """
+    Called by the Executor Agent in Step 5.
+    Sends the dynamically generated AutoGen task to the assigned Responder Node.
+    """
+    priority = task.get("priority", "MEDIUM").upper()
+    action = task.get("action", "Respond")
+    zone = task.get("zone", "General Area")
+
+    # Shorten Assignment ID for reply reference
+    ref_id = str(assignment_id)[:5].upper()
+
+    sms_body = (
+        f"🚨 ADRC TASK [{priority}]\n"
+        f"Action: {action}\n"
+        f"Zone: {zone}\n"
+        f"Reply 'DONE {ref_id}' when completed."
+    )
+
+    sid = await send_sms(to=node.phone, body=sms_body)
+    
+    if sid:
+        logger.info(f"Task SMS sent to {node.name} for assignment {assignment_id}")
+    else:
+        logger.info(f"Task SMS skipped (sandbox/dev mode) to {node.name} for {assignment_id}")
+

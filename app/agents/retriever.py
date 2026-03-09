@@ -122,26 +122,26 @@ async def _search_azure_ai(
     and the index is populated.
     """
     try:
-        # Uncomment when azure-search-documents is installed:
-        # from azure.search.documents import SearchClient
-        # from azure.core.credentials import AzureKeyCredential
-        #
-        # client = SearchClient(
-        #     endpoint=settings.azure_search_endpoint,
-        #     index_name=settings.azure_search_index,
-        #     credential=AzureKeyCredential(settings.azure_search_key),
-        # )
-        # query = f"{disaster_type} {region or ''} {description or ''}"
-        # results = client.search(
-        #     search_text=query,
-        #     top=5,
-        #     query_type="semantic",
-        # )
-        # texts = [r["content"] for r in results if r.get("content")]
-        # if texts:
-        #     return "\n\n".join(texts)
+        from azure.search.documents import SearchClient
+        from azure.core.credentials import AzureKeyCredential
 
-        logger.info("Azure AI Search: placeholder — not yet implemented.")
+        client = SearchClient(
+            endpoint=settings.azure_search_endpoint,
+            index_name=settings.azure_search_index,
+            credential=AzureKeyCredential(settings.azure_search_key),
+        )
+        query = f"{disaster_type} {region or ''} {description or ''}"
+        results = client.search(
+            search_text=query,
+            top=5,
+            # query_type="semantic", # Ensure semantic search is enabled on your Azure Search resource if using this
+        )
+        texts = [r["content"] for r in results if r.get("content")]
+        if texts:
+            logger.info(f"Azure AI Search returned {len(texts)} chunks from index '{settings.azure_search_index}'")
+            return "\n\n".join(texts)
+
+        logger.info("Azure AI Search returned no results.")
         return None
 
     except Exception as e:

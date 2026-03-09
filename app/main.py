@@ -10,11 +10,12 @@ FastAPI application entry point.
 import logging
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routers import crises, ingest, nodes, orchestration
+from app.services.notifier import notifier
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 settings = get_settings()
@@ -73,3 +74,20 @@ async def on_startup():
 @app.on_event("shutdown")
 async def on_shutdown():
     logger.info("ADRC API shutting down.")
+
+
+# ── WebSockets ────────────────────────────────────────────────────────────────
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    Accepts WebSocket connections from the React Dashboard.
+    Pushes live updates when an SMS arrives, a crisis changes state, etc.
+    """
+    await notifier.connect(websocket)
+    try:
+        while True:
+            # We don't really expect incoming WS messages from the dashboard,
+            # but we need to keep the connection open and listen for disconnects
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        notifier.disconnect(websocket)

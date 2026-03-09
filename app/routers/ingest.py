@@ -34,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import CrisisReport, ReportCluster, TrustedNode
-from app.services import clustering, content_safety, translator, twilio_client
+from app.services import clustering, content_safety, translator, twilio_client, notifier
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +135,19 @@ async def receive_sms(
         logger.info(
             f"🔔 Cluster {new_cluster.id} created — pinged {pinged} L2/L3 node(s)."
         )
+
+    # ── Step 8: Broadcast to Dashboard ────────────────────────────────────────
+    await notifier.broadcast(
+        "NEW_SMS_REPORT",
+        {
+            "id": str(report.id),
+            "phone": report.reporter_phone,
+            "text": report.translated_text or report.raw_text,
+            "is_spam": report.is_spam,
+            "location_wkt": report.location,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    )
 
     # ── Return empty TwiML (no reply SMS to sender) ───────────────────────────
     return _twiml("")
@@ -242,6 +255,19 @@ async def confirm_sms(
     logger.info(
         f"🚨 Crisis {active_crisis.id} created | {disaster} | "
         f"confirmed by {node.name}"
+    )
+
+    # ── Broadcast new crisis to Dashboard ─────────────────────────────────────
+    await notifier.broadcast(
+        "CRISIS_CONFIRMED",
+        {
+            "id": str(active_crisis.id),
+            "title": active_crisis.title,
+            "disaster_type": disaster,
+            "severity": active_crisis.severity,
+            "phase": "RETRIEVAL", # Initial phase
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
     )
 
     # ── Reply to the confirming node with acknowledgement ─────────────────────
