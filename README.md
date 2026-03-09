@@ -159,11 +159,13 @@ ssdn_microhard/
 
 ## Roadmap
 
-| Step | Feature |
-|---|---|
-| ✅ Step 1 | FastAPI backend + PostgreSQL/PostGIS schema |
-| 🔜 Step 2 | Azure Translator + Content Safety + PostGIS clustering |
-| 🔜 Step 3 | AutoGen multi-agent setup (Retriever + Planner) |
-| 🔜 Step 4 | HITL Dashboard (React + Mapbox GL JS + WebSockets) |
-| 🔜 Step 5 | Executor Agent + Twilio dispatch + feedback loop |
-| 🔜 Step 6 | Azure containerization (Azure Container Apps) |
+| Step | Feature | Status |
+|---|---|---|
+| ✅ Step 1 | FastAPI backend + PostgreSQL/PostGIS schema | Complete |
+| ✅ Step 2 | Azure Content Safety + PostGIS clustering | Complete |
+| ✅ Step 3 | AutoGen multi-agent setup (Retriever + Planner) | Complete |
+| ✅ Step 4 | HITL Dashboard (React + WebSockets) | Complete |
+| ✅ Step 5 | Executor Agent + Twilio dispatch + feedback loop | Complete |
+| ✅ Step 6 | External Disaster APIs (USGS Quakes + IMD Weather) | Complete |
+
+**Project is 100% complete and ready for the Microsoft AI Unlocked Hackathon demo!**
