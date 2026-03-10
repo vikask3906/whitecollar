@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Clock, Activity, CheckCircle2, Map as MapIcon, ShieldAlert } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { AlertTriangle, Clock, Activity, CheckCircle2, Map as MapIcon, ShieldAlert, Pencil } from 'lucide-react';
 import { MapContainer, TileLayer, Circle, Popup, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import classNames from 'classnames';
@@ -37,6 +37,9 @@ export default function App() {
   const [selectedCrisisId, setSelectedCrisisId] = useState<string | null>(null);
   const [recentReports, setRecentReports] = useState<SmsReport[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
+  const [editingTasks, setEditingTasks] = useState<Record<string, string>>({}); // taskId -> edited action text
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Initial Data Fetch ---
   useEffect(() => {
@@ -46,9 +49,12 @@ export default function App() {
       .catch(err => console.error("Failed to load crises on mount:", err));
   }, []);
 
-  // --- WebSocket Connection ---
-  useEffect(() => {
+  // --- WebSocket Connection with Auto-Reconnect ---
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
     const ws = new WebSocket('ws://localhost:8000/ws');
+    wsRef.current = ws;
 
     ws.onopen = () => {
       console.log('✅ Connected to ADRC Backend');
@@ -56,10 +62,10 @@ export default function App() {
     };
 
     ws.onclose = () => {
-      console.log('❌ Disconnected from ADRC Backend');
+      console.log('❌ Disconnected — reconnecting in 3s...');
       setWsConnected(false);
-      // primitive reconnect
-      setTimeout(() => setWsConnected(false), 5000); // trigger re-render to reconnect? 
+      wsRef.current = null;
+      reconnectTimer.current = setTimeout(connectWebSocket, 3000);
     };
 
     ws.onmessage = (event) => {
@@ -68,10 +74,9 @@ export default function App() {
         console.log("WebSocket event:", message);
 
         if (message.type === 'NEW_SMS_REPORT') {
-          setRecentReports(prev => [message.data, ...prev].slice(0, 10)); // Keep last 10
+          setRecentReports(prev => [message.data, ...prev].slice(0, 10));
         } 
         else if (message.type === 'CRISIS_CONFIRMED') {
-          // Add or update
           setCrises(prev => {
             const exists = prev.find(c => c.id === message.data.id);
             if (exists) {
@@ -79,11 +84,9 @@ export default function App() {
             }
             return [message.data, ...prev];
           });
-          // Auto-select if nothing selected
           setSelectedCrisisId(prev => prev ? prev : message.data.id);
         }
         else if (message.type === 'ORCHESTRATION_UPDATED') {
-          // Update the phase and plan of a crisis
           setCrises(prev => prev.map(c => {
             if (c.id === message.data.crisis_id) {
               return {
@@ -99,13 +102,29 @@ export default function App() {
             return c;
           }));
         }
+        else if (message.type === 'TASK_STATUS_UPDATED') {
+          // Show responder reply in the live feed
+          setRecentReports(prev => [{
+            id: message.data.assignment_id,
+            phone: message.data.node_name,
+            text: `Task ${message.data.new_status} ✅`,
+            is_spam: false,
+            timestamp: message.data.responded_at,
+          }, ...prev].slice(0, 10));
+        }
       } catch (err) {
         console.error("Error parsing WS message:", err);
       }
     };
-
-    return () => ws.close();
   }, []);
+
+  useEffect(() => {
+    connectWebSocket();
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+    };
+  }, [connectWebSocket]);
 
   // --- Action Handlers ---
   const triggerOrchestration = async (crisisId: string) => {
@@ -118,11 +137,20 @@ export default function App() {
 
   const approvePlan = async (crisisId: string) => {
     try {
+      // Send any edited tasks along with the approval
+      const payload: any = { comment: "Approved via dashboard" };
+      if (Object.keys(editingTasks).length > 0 && selectedCrisis?.orchestration_state?.plan?.tasks) {
+        payload.tasks = selectedCrisis.orchestration_state.plan.tasks.map((task: any) => ({
+          ...task,
+          action: editingTasks[task.id] ?? task.action,
+        }));
+      }
       await fetch(`http://localhost:8000/crises/${crisisId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: "Approved via dashboard" })
+        body: JSON.stringify(payload)
       });
+      setEditingTasks({}); // Clear edits after approval
     } catch (err) {
       console.error("Approve failed:", err);
     }
@@ -341,7 +369,23 @@ export default function App() {
                             </div>
                             <div className="flex-1">
                               <div className="flex justify-between items-start mb-1">
-                                <p className="text-slate-200 font-medium text-lg leading-snug">{task.action}</p>
+                                {selectedCrisis.phase === 'HITL_REVIEW' ? (
+                                  <div className="flex-1 mr-4">
+                                    <textarea
+                                      className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-slate-200 text-base focus:border-blue-500 focus:outline-none resize-none"
+                                      rows={2}
+                                      value={editingTasks[task.id] ?? task.action}
+                                      onChange={(e) => setEditingTasks(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                    />
+                                    {editingTasks[task.id] && editingTasks[task.id] !== task.action && (
+                                      <div className="text-xs text-blue-400 mt-1 flex items-center gap-1">
+                                        <Pencil size={10} /> Edited
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-200 font-medium text-lg leading-snug">{task.action}</p>
+                                )}
                                 <span className="text-xs text-slate-500 border border-slate-700 rounded px-2 tracking-wide font-mono bg-slate-950/50 whitespace-nowrap ml-4">
                                   Ref: {task.sop_reference}
                                 </span>

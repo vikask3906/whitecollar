@@ -38,12 +38,7 @@ class Settings(BaseSettings):
     azure_openai_api_key: str = ""
     azure_openai_deployment: str = "gpt-4o"
 
-    # ── Azure AI Translator ────────────────────────────────────────────────────
-    azure_translator_key: str = ""
-    azure_translator_region: str = "eastus"
-    azure_translator_endpoint: str = (
-        "https://api.cognitive.microsofttranslator.com"
-    )
+
 
     # ── Azure AI Content Safety ────────────────────────────────────────────────
     azure_content_safety_endpoint: str = ""

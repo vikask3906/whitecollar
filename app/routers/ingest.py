@@ -1,8 +1,9 @@
 """
 app/routers/ingest.py
 ─────────────────────
-POST /webhook/sms      — Twilio inbound SMS (citizen reports)
-POST /webhook/sms/confirm — L2/L3 node "YES" confirmation
+POST /webhook/sms           — Twilio inbound SMS (citizen reports)
+POST /webhook/sms/confirm   — L2/L3 node "YES" confirmation
+POST /webhook/sms/task-reply — Responder ACCEPT/DONE replies
 
 Full Phase 1 pipeline:
   ┌─────────────────────────────────────────────────────────────────┐
@@ -10,8 +11,7 @@ Full Phase 1 pipeline:
   │       ↓                                                         │
   │  1. Parse phone + body + location                               │
   │  2. Save raw CrisisReport to PostgreSQL                         │
-  │  3. Azure AI Translator → translated_text + detected_language   │
-  │  4. Azure AI Content Safety → is_spam flag                      │
+  │  3. Azure AI Content Safety → is_spam flag                      │
   │  5. [if not spam + has location]                                │
   │     PostGIS ST_DWithin cluster check                            │
   │       ↓ cluster threshold met?                                  │
@@ -33,8 +33,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import CrisisReport, ReportCluster, TrustedNode
-from app.services import clustering, content_safety, translator, twilio_client, notifier
+from app.models import (
+    AssignmentStatus, CrisisReport, ReportCluster, TaskAssignment, TrustedNode,
+)
+from app.services import clustering, content_safety, twilio_client
+from app.services.notifier import notifier
 
 logger = logging.getLogger(__name__)
 
@@ -96,18 +99,10 @@ async def receive_sms(
     await db.flush()
     logger.info(f"💾 Report saved: {report.id}")
 
-    # ── Step 3: Azure AI Translator ───────────────────────────────────────────
-    # Translates regional language (Hindi, Tamil, Marathi, etc.) → English
-    # Falls back gracefully if AZURE_TRANSLATOR_KEY not set
-    translated_text, detected_lang = await translator.translate_to_english(body)
-    report.translated_text = translated_text
-    report.detected_language = detected_lang
-    await db.flush()
-
-    # ── Step 4: Azure AI Content Safety ──────────────────────────────────────
-    # Checks for spam, abuse, test messages on the translated text
+    # ── Step 3: Azure AI Content Safety ──────────────────────────────────────
+    # Checks for spam, abuse, test messages on the raw SMS body
     # Falls back to False (allow through) if AZURE_CONTENT_SAFETY_KEY not set
-    flagged = await content_safety.is_spam_or_unsafe(translated_text)
+    flagged = await content_safety.is_spam_or_unsafe(body)
     report.is_spam = flagged
     await db.flush()
 
@@ -142,7 +137,7 @@ async def receive_sms(
         {
             "id": str(report.id),
             "phone": report.reporter_phone,
-            "text": report.translated_text or report.raw_text,
+            "text": report.raw_text,
             "is_spam": report.is_spam,
             "location_wkt": report.location,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -274,6 +269,118 @@ async def confirm_sms(
     return _twiml(
         f"Thank you {node.name}! Crisis #{str(active_crisis.id)[:8].upper()} "
         f"logged. Response teams are being coordinated. Stay safe."
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  POST /webhook/sms/task-reply
+#  Receives ACCEPT/DONE replies from field responders
+# ═══════════════════════════════════════════════════════════════════════════════
+@router.post(
+    "/sms/task-reply",
+    summary="Responder Task Reply Webhook",
+    description=(
+        "When a responder replies ACCEPT or DONE {ref_id}, updates "
+        "the TaskAssignment status and broadcasts to the dashboard."
+    ),
+    response_class=Response,
+)
+async def task_reply_sms(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    form = await request.form()
+    from_phone: str = form.get("From", "").strip()
+    body: str = (form.get("Body", "") or "").strip().upper()
+
+    logger.info(f"📲 Task reply SMS from {from_phone}: '{body}'")
+
+    # ── Verify sender is a valid L2/L3 TrustedNode ────────────────────────────
+    node_result = await db.execute(
+        select(TrustedNode).where(
+            TrustedNode.phone == from_phone,
+            TrustedNode.tier >= 2,
+            TrustedNode.is_active == True,
+        )
+    )
+    node: TrustedNode | None = node_result.scalar_one_or_none()
+
+    if not node:
+        logger.warning(f"Task reply from unknown/L1 phone {from_phone} — ignoring.")
+        return _twiml("")
+
+    # ── Parse the reply type ──────────────────────────────────────────────────
+    new_status: AssignmentStatus | None = None
+    ref_id: str | None = None
+
+    if body.startswith("DONE"):
+        # Expected format: "DONE AB12F" (ref_id is first 5 chars of assignment UUID)
+        parts = body.split()
+        ref_id = parts[1] if len(parts) > 1 else None
+        new_status = AssignmentStatus.COMPLETED
+    elif "ACCEPT" in body:
+        new_status = AssignmentStatus.ACCEPTED
+    elif "REJECT" in body:
+        new_status = AssignmentStatus.REJECTED
+    else:
+        logger.info(f"Unrecognized task reply from {from_phone}: '{body}'")
+        return _twiml("")
+
+    # ── Find the matching TaskAssignment ───────────────────────────────────────
+    query = select(TaskAssignment).where(
+        TaskAssignment.node_id == node.id,
+        TaskAssignment.status == AssignmentStatus.DISPATCHED,
+    )
+
+    # If ref_id provided, try to match by partial UUID
+    if ref_id and new_status == AssignmentStatus.COMPLETED:
+        # Also check ACCEPTED assignments for DONE replies
+        query = select(TaskAssignment).where(
+            TaskAssignment.node_id == node.id,
+            TaskAssignment.status.in_([
+                AssignmentStatus.DISPATCHED,
+                AssignmentStatus.ACCEPTED,
+            ]),
+        )
+
+    # Get the most recent assignment for this node
+    query = query.order_by(TaskAssignment.dispatched_at.desc()).limit(1)
+    result = await db.execute(query)
+    assignment: TaskAssignment | None = result.scalar_one_or_none()
+
+    if not assignment:
+        logger.info(f"No active assignment found for node {node.name}")
+        return _twiml(
+            f"Hi {node.name}! No pending tasks found for you right now."
+        )
+
+    # ── Update the assignment status ──────────────────────────────────────────
+    assignment.status = new_status
+    assignment.responded_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    logger.info(
+        f"✅ Assignment {assignment.id} for node {node.name} → {new_status.value}"
+    )
+
+    # ── Broadcast to dashboard ────────────────────────────────────────────────
+    await notifier.broadcast(
+        "TASK_STATUS_UPDATED",
+        {
+            "assignment_id": str(assignment.id),
+            "node_id": str(node.id),
+            "node_name": node.name,
+            "crisis_id": str(assignment.crisis_id),
+            "new_status": new_status.value,
+            "responded_at": assignment.responded_at.isoformat(),
+        }
+    )
+
+    # ── Reply to the responder ────────────────────────────────────────────────
+    status_label = new_status.value.lower()
+    return _twiml(
+        f"Thank you {node.name}! Task {status_label}. "
+        f"Crisis #{str(assignment.crisis_id)[:8].upper()} updated."
     )
 
 
